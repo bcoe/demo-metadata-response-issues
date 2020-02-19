@@ -1,5 +1,5 @@
 const {isAvailable} = require('./metadata');
-const CONCURRENCY = 30;
+const CONCURRENCY = 150;
 
 async function coldStartMetadata () {
   const arr = [];

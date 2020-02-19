@@ -47,13 +47,15 @@ async function metadataAccessor(type, options, noResponseRetries = 3, fastFail =
     validate(options);
     try {
         const requestMethod = fastFail ? fastFailMetadataRequest : gaxios_1.request;
+        // Increase timeout if we think we're in a Cloud Run or GCF environment:
+        const timeout = (process.env.K_SERVICE || process.env.FUNCTION_NAME) ? 500000 : 3000
         const res = await requestMethod({
             url: `${exports.BASE_URL}/${type}${property}`,
             headers: Object.assign({}, exports.HEADERS, options.headers),
             retryConfig: { noResponseRetries },
             params: options.params,
             responseType: 'text',
-            timeout: 3000,
+            timeout
         });
         // NOTE: node.js converts all incoming headers to lower case.
         if (res.headers[exports.HEADER_NAME.toLowerCase()] !== exports.HEADER_VALUE) {
@@ -150,18 +152,22 @@ function detectGCPAvailableRetries() {
  */
 let cachedIsAvailableResponse;
 async function isAvailable() {
+    let start = Date.now();
     try {
         // If a user is instantiating several GCP libraries at the same time,
         // this may result in multiple calls to isAvailable(), to detect the
         // runtime environment. We use the same promise for each of these calls
         // to reduce the network load.
         // if (cachedIsAvailableResponse === undefined) {
+        console.info('STARTED');
         cachedIsAvailableResponse = metadataAccessor('instance', undefined, detectGCPAvailableRetries(), true);
         //}
-	await cachedIsAvailableResponse;
+        await cachedIsAvailableResponse;
+        console.info(`SUCCESS ${Date.now() - start}`);
         return true;
     }
     catch (err) {
+        console.info(`FAILED ${Date.now() - start}`);
         if (process.env.DEBUG_AUTH) {
             console.info(err.message);
         }
