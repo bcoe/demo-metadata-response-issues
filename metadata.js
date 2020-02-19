@@ -7,6 +7,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const gaxios_1 = require("gaxios");
+const request = require("sync-request")
 const jsonBigint = require('json-bigint');
 exports.HOST_ADDRESS = 'http://169.254.169.254';
 exports.BASE_PATH = '/computeMetadata/v1';
@@ -35,7 +36,7 @@ function validate(options) {
         }
     });
 }
-async function metadataAccessor(type, options, noResponseRetries = 3, fastFail = false) {
+function metadataAccessor(type, options, noResponseRetries = 3, fastFail = false) {
     options = options || {};
     if (typeof options === 'string') {
         options = { property: options };
@@ -49,14 +50,16 @@ async function metadataAccessor(type, options, noResponseRetries = 3, fastFail =
         const requestMethod = fastFail ? fastFailMetadataRequest : gaxios_1.request;
         // Increase timeout if we think we're in a Cloud Run or GCF environment:
         const timeout = (process.env.K_SERVICE || process.env.FUNCTION_NAME) ? 500000 : 3000
-        const res = await requestMethod({
-            url: `${exports.BASE_URL}/${type}${property}`,
-            headers: Object.assign({}, exports.HEADERS, options.headers),
-            retryConfig: { noResponseRetries },
-            params: options.params,
-            responseType: 'text',
-            timeout
-        });
+        const res = request('GET', `${exports.BASE_URL}/${type}${property}`, {
+          headers: Object.assign({}, exports.HEADERS, options.headers),
+          retry: false
+        })
+        // console.info(res.statusCode);
+        if (res.statusCode !== 200 || !res.body) {
+            throw Error(res.statusCode);
+        } else {
+            return res.statusCode;
+        }
         // NOTE: node.js converts all incoming headers to lower case.
         if (res.headers[exports.HEADER_NAME.toLowerCase()] !== exports.HEADER_VALUE) {
             throw new Error(`Invalid response from metadata service: incorrect ${exports.HEADER_NAME} header.`);
@@ -87,15 +90,15 @@ async function fastFailMetadataRequest(options) {
     // reasons for this:
     //
     // 1. the DNS is slow in some GCP environments; by checking both, we might
-    //    detect the runtime environment signficantly faster.
-    // 2. we can't just check the IP, which is tarpitted and slow to respond
-    //    on a user's local machine.
-    //
-    // Additional logic has been added to make sure that we don't create an
-    // unhandled rejection in scenarios where a failure happens sometime
-    // after a success.
-    //
-    // Note, however, if a failure happens prior to a success, a rejection should
+    //    detect the runtime environmentfastFailMetadataRequest signficantly faster.
+    // 2. we can't just check the IP, whfastFailMetadataRequestich is tarpitted and slow to respond
+    //    on a user's local machine.fastFailMetadataRequest
+    //fastFailMetadataRequest
+    // Additional logic has been added tfastFailMetadataRequesto make sure that we don't create an
+    // unhandled rejection in scenarios fastFailMetadataRequestwhere a failure happens sometime
+    // after a success.fastFailMetadataRequest
+    //fastFailMetadataRequest
+    // Note, however, if a failure happefastFailMetadataRequestns prior to a success, a rejection should
     // occur, this is for folks running locally.
     //
     let responded = false;
@@ -151,23 +154,18 @@ function detectGCPAvailableRetries() {
  * Determine if the metadata server is currently available.
  */
 let cachedIsAvailableResponse;
-async function isAvailable() {
-    let start = Date.now();
+function isAvailable() {
     try {
         // If a user is instantiating several GCP libraries at the same time,
         // this may result in multiple calls to isAvailable(), to detect the
         // runtime environment. We use the same promise for each of these calls
         // to reduce the network load.
         // if (cachedIsAvailableResponse === undefined) {
-        console.info('STARTED');
-        cachedIsAvailableResponse = metadataAccessor('instance', undefined, detectGCPAvailableRetries(), true);
-        //}
-        await cachedIsAvailableResponse;
-        console.info(`SUCCESS ${Date.now() - start}`);
+        cachedIsAvailableResponse = metadataAccessor('instance/', undefined, detectGCPAvailableRetries(), true);
         return true;
     }
     catch (err) {
-        console.info(`FAILED ${Date.now() - start}`);
+        console.info(err);
         if (process.env.DEBUG_AUTH) {
             console.info(err.message);
         }

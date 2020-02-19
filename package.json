@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "gcp-metadata": "^3.3.1"
+    "gcp-metadata": "^3.3.1",
+    "sync-request": "^6.1.0"
   }
 }

@@ -1,16 +1,13 @@
 const {isAvailable} = require('./metadata');
 const CONCURRENCY = 150;
 
-async function coldStartMetadata () {
+function coldStartMetadata () {
   const arr = [];
+  const start = Date.now();
   for (let i = 0; i < CONCURRENCY; i++) {
-    arr.push(isAvailable());
+    isAvailable();
   }
-  // Promise.all waits for all operations to finish, performing them in
-  // parallel.
-  return Promise.all(arr).then((result) => {
-    console.info(JSON.stringify(result), null, 2);
-  });
+  console.info(`SUCCESS ${Date.now() - start}`);
 }
 
 coldStartMetadata();
@@ -26,4 +23,3 @@ exports.helloWorld = async (req, res) => {
   let message = req.query.message || req.body.message || 'Hello World!';
   res.status(200).send(message);
 };
-
